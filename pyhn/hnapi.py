@@ -37,16 +37,17 @@ import re
 import isit
 import json
 
-from urlparse import urljoin
 from bs4 import BeautifulSoup
 
 if isit.py3:
     import urllib.request
     import urllib.parse
     from urllib.error import URLError
+    from urllib.parse import urljoin
 else:
     import urllib2
     from urllib2 import URLError
+    from urlparse import urljoin
 
 
 class HNException(Exception):
@@ -69,16 +70,21 @@ class HackerNewsAPI:
         """
         Returns the HTML source code for a URL.
         """
+        headers = {
+            'User-Agent': 'Pyhn (Hacker news command line client) - https://github.com/socketubs/pyhn'}
         try:
             if isit.py3:
-                f = urllib.request.urlopen(url)
+                r = urllib.request.Request(url, b'', headers)
+                f = urllib.request.urlopen(r)
             else:
-                f = urllib2.urlopen(url)
+                r = urllib2.Request(url, '', headers)
+                f = urllib2.urlopen(r)
 
             source = f.read()
             f.close()
             return source.decode('utf-8')
         except URLError:
+            raise
             raise HNException("Error getting source from " + url + ". Your internet connection may have something funny going on, or you could be behind a proxy.")
 
     def getStoryNumber(self, source):
@@ -98,7 +104,7 @@ class HackerNewsAPI:
         url = source[URLStart:URLEnd]
         # Check for "Ask HN" links.
         if url[0:4] == "item":  # "Ask HN" links start with "item".
-            url = "http://news.ycombinator.com/" + url
+            url = "https://news.ycombinator.com/" + url
 
         # Change "&amp;" to "&"
         url = url.replace("&amp;", "&")
@@ -121,8 +127,8 @@ class HackerNewsAPI:
         domain = source[domainStart:domainEnd]
         # Check for "Ask HN" links.
         if domain[0] == '=':
-            return "http://news.ycombinator.com"
-        return "http://" + domain[1:len(domain) - 2]
+            return "https://news.ycombinator.com"
+        return "https://" + domain[1:len(domain) - 2]
 
     def getStoryTitle(self, source):
         """
@@ -193,7 +199,7 @@ class HackerNewsAPI:
         """
         Gets the comment URL of a story.
         """
-        return "http://news.ycombinator.com/item?id=" + str(self.getHNID(source))
+        return "https://news.ycombinator.com/item?id=" + str(self.getHNID(source))
 
     def getStories(self, source):
         """
@@ -255,7 +261,7 @@ class HackerNewsAPI:
             newsStories[i].title = storyTitles[i]
             newsStories[i].score = storyScores[i]
             newsStories[i].submitter = storySubmitters[i]
-            newsStories[i].submitterURL = "http://news.ycombinator.com/user?id=" + storySubmitters[i]
+            newsStories[i].submitterURL = "https://news.ycombinator.com/user?id=" + storySubmitters[i]
             newsStories[i].commentCount = storyCommentCounts[i]
             newsStories[i].commentsURL = storyCommentURLs[i]
             newsStories[i].publishedTime = storyPublishedTime[i]
@@ -282,8 +288,8 @@ class HackerNewsAPI:
         """
         stories = []
 
-        source_new1 = self.getSource("http://news.ycombinator.com/news")
-        source_new2 = self.getSource("http://news.ycombinator.com/news2")
+        source_new1 = self.getSource("https://news.ycombinator.com/news")
+        source_new2 = self.getSource("https://news.ycombinator.com/news2")
         source_latest = source_new2
 
         stories += self.getStories(source_new1)
@@ -301,7 +307,7 @@ class HackerNewsAPI:
         """
         stories = []
 
-        source_latest = self.getSource("http://news.ycombinator.com/newest")
+        source_latest = self.getSource("https://news.ycombinator.com/newest")
         stories += self.getStories(source_latest)
 
         for i in range(extra_page):
@@ -316,7 +322,7 @@ class HackerNewsAPI:
         """
         stories = []
 
-        source_latest = self.getSource("http://news.ycombinator.com/best")
+        source_latest = self.getSource("https://news.ycombinator.com/best")
         stories += self.getStories(source_latest)
 
         for i in range(extra_page):
@@ -329,7 +335,7 @@ class HackerNewsAPI:
         """
         Gets the pageId stories from Hacker News.
         """
-        source = self.getSource("http://news.ycombinator.com/x?fnid=%s" % pageId)
+        source = self.getSource("https://news.ycombinator.com/x?fnid=%s" % pageId)
         stories = self.getStories(source)
         return stories
 
@@ -337,7 +343,7 @@ class HackerNewsAPI:
         soup = BeautifulSoup(source)
         more_a = soup.findAll("a", {"rel": "nofollow"}, text="More")
         if more_a:
-            return urljoin('http://news.ycombinator.com/', more_a[0]['href'])
+            return urljoin('https://news.ycombinator.com/', more_a[0]['href'])
         return None
 
 
@@ -401,8 +407,8 @@ class HackerNewsUser:
         Constructor for the user class.
         """
         self.name = username
-        self.userPageURL = "http://news.ycombinator.com/user?id=" + self.name
-        self.threadsPageURL = "http://news.ycombinator.com/threads?id=" + self.name
+        self.userPageURL = "https://news.ycombinator.com/user?id=" + self.name
+        self.threadsPageURL = "https://news.ycombinator.com/threads?id=" + self.name
         self.refreshKarma()
 
     def refreshKarma(self):
